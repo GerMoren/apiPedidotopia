@@ -31,14 +31,17 @@ server.use((req, res, next) => {
   next();
 });
 
-server.use("/", (req, res) => {
-  res.send("Andando la pag");
-});
 server.use("/callback", (req, res) => {
   // res.send(req.body.topic);
-  res.send(req.body);
   console.log(req.body);
+  res.send("OK");
 });
+
+server.use("/", (req, res, next) => {
+  let bueno = "bueno";
+  res.send(`${bueno}`);
+});
+
 // server.use("/", routes);
 
 // Error catching endware.
