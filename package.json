@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon -L",
+    "start": "node index",
+    "dev": "nodemon index",
     "forever": "forever index.js",
     "test": "mocha -w ./tests/**/*.spec.js"
   },
-  "author": "Dev5",
+  "author": "GerMoren",
   "license": "ISC",
   "engines": {
     "node": ">=12.18.3",
