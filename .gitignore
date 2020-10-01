@@ -2,3 +2,5 @@
 package-lock.json
 .env
 .gitignore
+.env
+.env.test
