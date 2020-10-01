@@ -51,7 +51,8 @@ const meliAuthorize = mercadolibre.authorize(code, redirect_uri, (err, res) => {
 const meliRefreshToken = mercadolibre.refreshAccessToken((err, res) => {
   access_token = res.access_token;
   refresh_token = res.refresh_token;
-  console.log(res);
+
+  // console.log(res);
 });
 
 server.get("/", async (req, res, next) => {
@@ -115,9 +116,6 @@ server.post("/", (req, res) => {
       product = values[0][0];
       category = values[1][0];
 
-      console.log("prods: " + JSON.stringify(product));
-      console.log("cats: " + JSON.stringify(category));
-
       product
         .update({
           categoryId: category.id,
@@ -131,7 +129,6 @@ server.post("/", (req, res) => {
         .then((producto) => res.send(producto));
     })
     .catch((err) => {
-      console.log("No se ha podido crear el producto" + err);
       res.sendStatus(400);
     });
 });
@@ -151,7 +148,6 @@ server.post("/publicar/:id", async (req, res) => {
     let prod = null;
     let link = null;
     let providerId = null;
-    console.log("req bodye s: " + JSON.stringify(req.body));
 
     // Busco el producto que quiere publicar el usuario
     const productToPublish = await Product.findOne({
@@ -220,12 +216,10 @@ async function publicarShopify(producto, precio, stock) {
   };
 
   const post = await request(options);
-  console.log("post es: " + JSON.stringify(post));
   return post;
 }
 
 async function publicarMeli(producto, precio, stock, category_id) {
-  console.log(JSON.stringify(producto));
   let data = {
     title: producto.title,
     category_id: category_id,
@@ -275,7 +269,6 @@ async function publicarMeli(producto, precio, stock, category_id) {
   };
 
   const post = await request(options);
-  console.log("post en meli es: " + JSON.stringify(post));
   return post;
 }
 

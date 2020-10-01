@@ -36,11 +36,9 @@ const mercadolibre = new meli.Meli(
 );
 
 const getUrlCode = mercadolibre.getAuthURL(redirect_uri);
-// console.log(getUrlCode);
 
 const meliAuthorize = mercadolibre.authorize(code, redirect_uri, (err, res) => {
   if (res.access_token) {
-    // console.log(res);
     access_token = res.access_token;
     refresh_token = res.refresh_token;
   }
@@ -49,13 +47,11 @@ const meliAuthorize = mercadolibre.authorize(code, redirect_uri, (err, res) => {
 const meliRefreshToken = mercadolibre.refreshAccessToken((err, res) => {
   access_token = res.access_token;
   refresh_token = res.refresh_token;
-  // console.log(res);
 });
 
 //Ruta que recibe la notificación desde shopify cuando se crea una nueva orden
 server.post("/shopify", (req, res) => {
   const rta = req.body;
-  console.log(JSON.stringify(rta));
   res.send();
   var ProductId;
   const items = rta.line_items.map((product) => {
@@ -68,13 +64,10 @@ server.post("/shopify", (req, res) => {
   Promise.all(items)
     .then((value) => {
       value.map((p) => {
-        console.log(p);
         return (ProductId = p[0].dataValues.id);
       });
     })
     .then((values) => {
-      console.log(values);
-      console.log(ProductId);
       return Orders.create({
         shopify_Id: req.body.id,
         cantidad: req.body.line_items[0].quantity,
@@ -85,8 +78,7 @@ server.post("/shopify", (req, res) => {
       });
     })
     .then((order) => {
-      console.log(order);
-      order.setProducts(ProductId);
+      order.addProducts(ProductId);
     })
     .catch((error) => console.error("Error: " + error));
 
@@ -96,10 +88,8 @@ server.post("/shopify", (req, res) => {
 //Ruta que recibe la notificación desde meli cuando se crea una nueva orden
 server.post("/meli", (req, res) => {
   const rta = req.body;
-  console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
   var id = req.body.resource.split("/");
   var orderId = id[id.length - 1];
-  console.log(orderId + " ACAAAAA");
 
   fetch(
     `https://api.mercadolibre.com/orders/${orderId}?access_token=${access_token}`,
@@ -109,7 +99,6 @@ server.post("/meli", (req, res) => {
   )
     .then((response) => response.json())
     .then((order) => {
-      console.log(JSON.stringify(order) + "RESPUESTA MELI!!! ");
       return Orders.create({
         meli_Id: order.id,
         cantidad: order.order_items[0].quantity,
@@ -118,7 +107,6 @@ server.post("/meli", (req, res) => {
         user_Id: order.buyer.id,
       })
         .then((created) => {
-          console.log(created);
           res.status(200).send(created);
         })
         .catch((error) => console.error("Error: " + error));
@@ -126,9 +114,8 @@ server.post("/meli", (req, res) => {
 });
 
 //Ruta que recibe la notificación desde shopify cuando se crea/actualiza un producto
-server.post("/shopify/create", (req, res, next) => {
+server.use("/shopify/create", (req, res, next) => {
   const productCreate = req.body;
-  // console.log(productCreate.variants[0].sku);
   var productId;
   Product.findOrCreate({
     where: {
@@ -138,14 +125,12 @@ server.post("/shopify/create", (req, res, next) => {
       stock_inicial: productCreate.variants[0].old_inventory_quantity,
       precio_inicial: productCreate.variants[0].price,
       images: productCreate.images.map((i) => {
-        // console.log(i);
         return i.src;
       }),
       productId_Shopify: productCreate.id,
     },
   })
     .then((product) => {
-      // console.log(product);
       productId = product[0].dataValues.id;
       return Category.findOrCreate({
         where: {
@@ -154,15 +139,13 @@ server.post("/shopify/create", (req, res, next) => {
       });
     })
     .then((category) => {
-      // console.log(category);
-      return category[0].setProducts(productId);
+      return category[0].addProducts(productId);
     })
     .then((v) => {
-      // console.log(v);
       return Provider.findByPk(2);
     })
     .then((provider) => {
-      provider.setProducts(productId, {
+      provider.addProducts(productId, {
         through: {
           link: `${APP_DOMAIN}/products/${productCreate.title}`,
           stock: productCreate.variants[0].inventory_quantity,
@@ -177,11 +160,9 @@ server.post("/shopify/create", (req, res, next) => {
 //Ruta que recibe la notificación desde meli cuando se crea/actualiza un producto
 server.post("/newproduct/meli", (req, res) => {
   const rta = req.body;
-  console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
   var id = req.body.resource.split("/");
   var productId = id[id.length - 1];
   var category_id;
-  console.log(productId + " ACAAAAA");
 
   fetch(
     `https://api.mercadolibre.com/items/${productId}?access_token=${access_token}`,
@@ -192,7 +173,6 @@ server.post("/newproduct/meli", (req, res) => {
     .then((response) => response.json())
     .then((product) => {
       category_id = product.category_id;
-      //  console.log(JSON.stringify(product) + " RESPUESTA MELI!!! ");
       Product.findOrCreate({
         where: {
           title: product.title,
@@ -203,7 +183,6 @@ server.post("/newproduct/meli", (req, res) => {
         },
       })
         .then((product) => {
-          //  console.log(product);
           productId = product[0].dataValues.id;
           return Category.findOrCreate({
             where: {
@@ -212,16 +191,13 @@ server.post("/newproduct/meli", (req, res) => {
           });
         })
         .then((category) => {
-          //  console.log(category);
-          return category[0].setProducts(productId);
+          return category[0].addProducts(productId);
         })
         .then((v) => {
-          //  console.log(v);
           return Provider.findByPk(1);
         })
         .then((provider) => {
-          //  console.log(provider)
-          return provider.setProducts(productId, {
+          return provider.addProducts(productId, {
             through: {
               stock: product.initial_quantity,
               precio: product.price,

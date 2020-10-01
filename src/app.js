@@ -37,9 +37,10 @@ server.use("/callback", (req, res) => {
   res.send(req.body);
 });
 
-server.use("/", (req, res) => {
-  res.send(req.query);
-});
+// server.use("/", (req, res, next) => {
+//   res.send(req.query);
+//   next();
+// });
 
 server.use("/", routes);
 
