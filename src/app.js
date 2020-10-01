@@ -3,7 +3,7 @@ const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const cors = require("cors");
-// const routes = require("./routes/index.js");
+const routes = require("./routes/index.js");
 
 require("./db.js");
 
@@ -33,15 +33,15 @@ server.use((req, res, next) => {
 
 server.use("/callback", (req, res) => {
   // res.send(req.body.topic);
-  console.log(req.body);
-  res.send("OK");
+  // console.log(req.body);
+  res.send(req.body);
 });
 
 server.use("/", (req, res) => {
   res.send(req.query);
 });
 
-// server.use("/", routes);
+server.use("/", routes);
 
 // Error catching endware.
 server.use((err, req, res, next) => {
