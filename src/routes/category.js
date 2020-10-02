@@ -13,7 +13,7 @@ server.get("/predictor/:id", async (req, res) => {
   });
 
   if (product) {
-    let categoryToPredict = product.category.title_sugerido;
+    let categoryToPredict = product.title;
 
     let options = {
       uri: `https://api.mercadolibre.com/sites/MLA/domain_discovery/search?q=${categoryToPredict}`,

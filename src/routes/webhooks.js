@@ -54,20 +54,20 @@ server.post("/shopify", (req, res) => {
   const rta = req.body;
   res.send();
   var ProductId;
-  const items = rta.line_items.map((product) => {
-    return Product.findAll({
-      where: {
-        productId_Shopify: product.product_id,
-      },
-    });
-  });
-  Promise.all(items)
-    .then((value) => {
-      value.map((p) => {
-        return (ProductId = p[0].dataValues.id);
-      });
-    })
+  const items = rta.line_items[0];
+  Product.findOne({
+    where: {
+      productId_Shopify: items.product_id,
+    },
+  })
+    // .then((value) => {
+    //   console.log(value);
+    //   value.map((p) => {
+    //     return (ProductId = p[0].dataValues.id);
+    //   });
+    // })
     .then((values) => {
+      ProductId = values.dataValues.id;
       return Orders.create({
         shopify_Id: req.body.id,
         cantidad: req.body.line_items[0].quantity,
@@ -79,6 +79,23 @@ server.post("/shopify", (req, res) => {
     })
     .then((order) => {
       order.addProducts(ProductId);
+      return Productprovider.findOne({
+        where: {
+          productId: ProductId,
+        },
+      });
+    })
+    .then((v) => {
+      console.log(v);
+      let stock = v.dataValues.stock;
+      return Productprovider.update(
+        { stock: stock - req.body.line_items[0].quantity },
+        {
+          where: {
+            productId: ProductId,
+          },
+        }
+      );
     })
     .catch((error) => console.error("Error: " + error));
 
@@ -151,7 +168,7 @@ server.post("/meli", (req, res) => {
     )
       .then((response) => response.json())
       .then((order) => {
-        return Orders.create({
+        return Orders.findOrCreate({
           meli_Id: order.id,
           cantidad: order.order_items[0].quantity,
           total: order.total_amount,
@@ -176,6 +193,7 @@ server.use("/shopify/create", (req, res, next) => {
       description: productCreate.body_html,
       sku: productCreate.variants[0].sku,
       stock_inicial: productCreate.variants[0].old_inventory_quantity,
+      // stock_total_actual: producCreate.variants[0].inventory_quantity,
       precio_inicial: productCreate.variants[0].price,
       images: productCreate.images.map((i) => {
         return i.src;
