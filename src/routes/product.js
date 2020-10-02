@@ -161,7 +161,7 @@ server.post("/publicar/:id", async (req, res) => {
       await productToPublish.update({
         productId_Shopify: prod.product.id,
       });
-
+      link = prod.title.toLowerCase().replace(/\s+/g, "-");
       providerId = 2;
     } else if (source === "mercadolibre") {
       prod = await publicarMeli(productToPublish, precio, stock, category_id);
@@ -191,10 +191,13 @@ server.post("/publicar/:id", async (req, res) => {
 });
 
 async function publicarShopify(producto, precio, stock) {
+  const imagesUrl = producto.images.map((url) => {
+    return { src: url };
+  });
   const productoShopify = {
     product: {
       title: producto.title,
-      body_html: "<strong>Good snowboard!</strong>",
+      body_html: producto.description,
       vendor: producto.proveedor,
       published_scope: "web",
       variants: [
@@ -204,7 +207,7 @@ async function publicarShopify(producto, precio, stock) {
           price: precio,
         },
       ],
-      images: [],
+      images: imagesUrl,
     },
   };
 

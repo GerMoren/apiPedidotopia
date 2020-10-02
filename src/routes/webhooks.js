@@ -88,29 +88,82 @@ server.post("/shopify", (req, res) => {
 //Ruta que recibe la notificación desde meli cuando se crea una nueva orden
 server.post("/meli", (req, res) => {
   const rta = req.body;
-  var id = req.body.resource.split("/");
-  var orderId = id[id.length - 1];
+  const topic = req.body.topic;
 
-  fetch(
-    `https://api.mercadolibre.com/orders/${orderId}?access_token=${access_token}`,
-    {
-      method: "GET",
-    }
-  )
-    .then((response) => response.json())
-    .then((order) => {
-      return Orders.create({
-        meli_Id: order.id,
-        cantidad: order.order_items[0].quantity,
-        total: order.total_amount,
-        status: "created",
-        user_Id: order.buyer.id,
-      })
-        .then((created) => {
-          res.status(200).send(created);
+  if (topic === "items") {
+    var id = req.body.resource.split("/");
+    var productId = id[id.length - 1];
+    var category_id;
+
+    fetch(
+      `https://api.mercadolibre.com/items/${productId}?access_token=${access_token}`,
+      {
+        method: "GET",
+      }
+    )
+      .then((response) => response.json())
+      .then((product) => {
+        category_id = product.category_id;
+        Product.findOrCreate({
+          where: {
+            title: product.title,
+            productId_Meli: product.id,
+            images: product.pictures.map((i) => {
+              return i.secure_url;
+            }),
+          },
         })
-        .catch((error) => console.error("Error: " + error));
-    });
+          .then((product) => {
+            productId = product[0].dataValues.id;
+            return Category.findOrCreate({
+              where: {
+                title_sugerido: category_id,
+              },
+            });
+          })
+          .then((category) => {
+            return category[0].addProducts(productId);
+          })
+          .then((v) => {
+            return Provider.findByPk(1);
+          })
+          .then((provider) => {
+            return provider.addProducts(productId, {
+              through: {
+                stock: product.initial_quantity,
+                precio: product.price,
+                link: product.permalink,
+              },
+            });
+          })
+          .then(() => {
+            res.sendStatus(200);
+          })
+          .catch((error) => next("Error: " + error));
+      });
+  } else if (topic === "created_orders") {
+    var id = req.body.resource.split("/");
+    var orderId = id[id.length - 1];
+
+    fetch(
+      `https://api.mercadolibre.com/orders/${orderId}?access_token=${access_token}`,
+      { method: "GET" }
+    )
+      .then((response) => response.json())
+      .then((order) => {
+        return Orders.create({
+          meli_Id: order.id,
+          cantidad: order.order_items[0].quantity,
+          total: order.total_amount,
+          status: "created",
+          user_Id: order.buyer.id,
+        })
+          .then((created) => {
+            res.status(200).send(created);
+          })
+          .catch((error) => console.error("Error: " + error));
+      });
+  }
 });
 
 //Ruta que recibe la notificación desde shopify cuando se crea/actualiza un producto
@@ -147,7 +200,9 @@ server.use("/shopify/create", (req, res, next) => {
     .then((provider) => {
       provider.addProducts(productId, {
         through: {
-          link: `${APP_DOMAIN}/products/${productCreate.title}`,
+          link: `${APP_DOMAIN}/products/${productCreate.title
+            .toLowerCase()
+            .replace(/\s+/g, "-")}`,
           stock: productCreate.variants[0].inventory_quantity,
           precio: productCreate.variants[0].price,
         },
