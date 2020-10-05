@@ -65,14 +65,9 @@ server.post("/shopify", (req, res) => {
       productId_Shopify: items.product_id,
     },
   })
-
     .then((values) => {
-      console.log(values + " estooo");
-
+      // console.log(values + " estooo");
       ProductId = values.dataValues.id;
-
-      console.log(values);
-      console.log(ProductId);
       return Orders.create({
         shopify_Id: req.body.id,
         cantidad: req.body.line_items[0].quantity,
@@ -83,12 +78,10 @@ server.post("/shopify", (req, res) => {
       });
     })
     .then((order) => {
-      console.log(order);
+      // console.log(order);
       order.setProducts(ProductId);
     })
     .catch((error) => console.error("Error: " + error));
-
-  // .then((created) => res.status(200).send(rta))
 });
 
 //Ruta que recibe la notificación desde meli cuando se crea una nueva orden/nuevo producto/modificar producto (ESTA ES LA QUE VA!)
@@ -155,10 +148,11 @@ server.post("/meli", (req, res) => {
           .catch((error) => next("Error: " + error));
       });
   } else if (topic === "created_orders") {
-    console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
+    var order;
+    // console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
     var id = req.body.resource.split("/");
     var orderId = id[id.length - 1];
-    console.log(orderId + " ACAAAAA");
+    // console.log(orderId + " ACAAAAA");
 
     fetch(
       `https://api.mercadolibre.com/orders/${orderId}?access_token=${access_token}`,
@@ -168,7 +162,7 @@ server.post("/meli", (req, res) => {
     )
       .then((response) => response.json())
       .then((order) => {
-        console.log(JSON.stringify(order) + "RESPUESTA MELI!!! ");
+        // console.log(JSON.stringify(order) + "RESPUESTA MELI!!! ");
         return Orders.findOrCreate({
           where: {
             meli_Id: order.id,
@@ -179,8 +173,19 @@ server.post("/meli", (req, res) => {
           },
         })
           .then((created) => {
-            console.log(created);
-            res.status(200).send(created);
+            order = created;
+            return Product.findOne({
+              where: { productId_Meli: order.order_items[0].item.id },
+            });
+          })
+          .then((product) => {
+            const ProductId = product.dataValues.id;
+
+            return order.setProducts(ProductId);
+          })
+          .then((value) => {
+            console.log(value);
+            res.status(200).send(value);
           })
           .catch((error) => console.error("Error: " + error));
       });
