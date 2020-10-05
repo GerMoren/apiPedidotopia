@@ -141,7 +141,7 @@ server.post("/meli", (req, res) => {
           })
           .then((provider) => {
             //  console.log(provider)
-            return provider.setProducts(productId, {
+            return provider.addProducts(productId, {
               through: {
                 stock: product.initial_quantity,
                 precio: product.price,
