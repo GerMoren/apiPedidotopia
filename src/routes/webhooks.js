@@ -87,6 +87,7 @@ server.post("/shopify", (req, res) => {
 //Ruta que recibe la notificación desde meli cuando se crea una nueva orden/nuevo producto/modificar producto (ESTA ES LA QUE VA!)
 server.post("/meli", (req, res) => {
   const rta = req.body;
+  // console.log(rta)
   const topic = req.body.topic;
   if (topic === "items") {
     const rta = req.body;
@@ -148,7 +149,8 @@ server.post("/meli", (req, res) => {
           .catch((error) => next("Error: " + error));
       });
   } else if (topic === "created_orders") {
-    var order;
+    var order2;
+    var itemID;
     // console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
     var id = req.body.resource.split("/");
     var orderId = id[id.length - 1];
@@ -162,7 +164,7 @@ server.post("/meli", (req, res) => {
     )
       .then((response) => response.json())
       .then((order) => {
-        // console.log(JSON.stringify(order) + "RESPUESTA MELI!!! ");
+        itemID = order.order_items[0].item.id;
         return Orders.findOrCreate({
           where: {
             meli_Id: order.id,
@@ -173,15 +175,16 @@ server.post("/meli", (req, res) => {
           },
         })
           .then((created) => {
-            order = created;
+            order2 = created[0];
+            console.log(order2);
             return Product.findOne({
-              where: { productId_Meli: order.order_items[0].item.id },
+              where: { productId_Meli: itemID },
             });
           })
           .then((product) => {
             const ProductId = product.dataValues.id;
 
-            return order.setProducts(ProductId);
+            return order2.addProducts(ProductId);
           })
           .then((value) => {
             console.log(value);
