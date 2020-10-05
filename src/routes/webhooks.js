@@ -241,9 +241,9 @@ server.post("/shopify/create", (req, res, next) => {
           precio: productCreate.variants[0].price,
         },
       });
+      res.send();
     })
     .catch((error) => next("Error: " + error));
-  res.send();
 });
 
 //Ruta que recibe la notificación desde meli cuando se crea/actualiza un producto (YA NO SE USA ESTA!!)
