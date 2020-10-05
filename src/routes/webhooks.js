@@ -55,7 +55,7 @@ const meliRefreshToken = mercadolibre.refreshAccessToken((err, res) => {
 //Ruta que recibe la notificación desde shopify cuando se crea una nueva orden
 server.post("/shopify", (req, res) => {
   const rta = req.body;
-  console.log(JSON.stringify(rta));
+  // console.log(JSON.stringify(rta));
   res.send();
   var ProductId;
   const items = rta.line_items[0];
@@ -66,14 +66,11 @@ server.post("/shopify", (req, res) => {
     },
   })
 
-    .then((value) => {
-      console.log(value + " estooo");
-      value.map((p) => {
-        console.log(p);
-        return (ProductId = p[0].dataValues.id);
-      });
-    })
     .then((values) => {
+      console.log(values + " estooo");
+
+      ProductId = values.dataValues.id;
+
       console.log(values);
       console.log(ProductId);
       return Orders.create({
