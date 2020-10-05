@@ -227,7 +227,9 @@ server.post("/shopify/create", (req, res, next) => {
     .then((provider) => {
       provider.setProducts(productId, {
         through: {
-          link: `${APP_DOMAIN}/products/${productCreate.title}`,
+          link: `https://${APP_DOMAIN}/products/${productCreate.title
+            .toLowerCase()
+            .replace(/\s+/g, "-")}`,
           stock: productCreate.variants[0].inventory_quantity,
           precio: productCreate.variants[0].price,
         },

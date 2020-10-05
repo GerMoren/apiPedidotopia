@@ -22,7 +22,8 @@ module.exports = (sequelize) => {
     },
     stock_total_actual: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      defaultValue: null,
+      // allowNull: false,
     },
     precio_inicial: {
       type: DataTypes.REAL,
