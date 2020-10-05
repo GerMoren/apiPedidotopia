@@ -17,14 +17,12 @@ async function createProviders(providers) {
       where: {
         name: p.name,
       },
-    }).catch((e) => console.log(e));
+    });
   });
 }
 
 const providers = [{ name: "Mercado Libre" }, { name: "Shopify" }];
 
-setTimeout(() => {
-  createProviders(providers);
-}, 2500);
+createProviders(providers);
 
 module.exports = server;

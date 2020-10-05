@@ -51,8 +51,7 @@ const meliAuthorize = mercadolibre.authorize(code, redirect_uri, (err, res) => {
 const meliRefreshToken = mercadolibre.refreshAccessToken((err, res) => {
   access_token = res.access_token;
   refresh_token = res.refresh_token;
-
-  // console.log(res);
+  console.log(access_token);
 });
 
 server.get("/", async (req, res, next) => {
@@ -100,6 +99,7 @@ server.post("/", (req, res) => {
       description: req.body.description,
       sku: req.body.sku,
       stock_inicial: req.body.stock_inicial,
+      stock_total_actual: req.body.stock_inicial,
       precio_inicial: req.body.precio_inicial,
       images: req.body.images,
     },
@@ -116,6 +116,9 @@ server.post("/", (req, res) => {
       product = values[0][0];
       category = values[1][0];
 
+      console.log("prods: " + JSON.stringify(product));
+      console.log("cats: " + JSON.stringify(category));
+
       product
         .update({
           categoryId: category.id,
@@ -129,6 +132,7 @@ server.post("/", (req, res) => {
         .then((producto) => res.send(producto));
     })
     .catch((err) => {
+      console.log("No se ha podido crear el producto" + err);
       res.sendStatus(400);
     });
 });
@@ -148,6 +152,7 @@ server.post("/publicar/:id", async (req, res) => {
     let prod = null;
     let link = null;
     let providerId = null;
+    console.log("req bodye s: " + JSON.stringify(req.body));
 
     // Busco el producto que quiere publicar el usuario
     const productToPublish = await Product.findOne({
@@ -161,7 +166,10 @@ server.post("/publicar/:id", async (req, res) => {
       await productToPublish.update({
         productId_Shopify: prod.product.id,
       });
-      link = prod.title.toLowerCase().replace(/\s+/g, "-");
+      //  link = prod.title.toLowerCase().replace(/\s+/g, "-");
+      link = `https://${APP_DOMAIN}/products/${prod.product.title
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`;
       providerId = 2;
     } else if (source === "mercadolibre") {
       prod = await publicarMeli(productToPublish, precio, stock, category_id);
@@ -219,14 +227,15 @@ async function publicarShopify(producto, precio, stock) {
   };
 
   const post = await request(options);
+  console.log("post es: " + JSON.stringify(post));
   return post;
 }
 
 async function publicarMeli(producto, precio, stock, category_id) {
+  console.log(JSON.stringify(producto));
   const images = producto.images.map((i) => {
     return { source: i };
   });
-
   let data = {
     title: producto.title,
     category_id: category_id,
@@ -239,7 +248,7 @@ async function publicarMeli(producto, precio, stock, category_id) {
     description: {
       plain_text: producto.description,
     },
-    // video_id: "YOUTUBE_ID_HERE",
+
     sale_terms: [
       {
         id: "WARRANTY_TYPE",
@@ -251,12 +260,7 @@ async function publicarMeli(producto, precio, stock, category_id) {
       },
     ],
     pictures: images,
-    // [
-    //   {
-    //     source:
-    //       "http://mla-s2-p.mlstatic.com/968521-MLA20805195516_072016-O.jpg",
-    //   },
-    // ],
+
     attributes: [
       {
         id: "BRAND",
@@ -277,6 +281,7 @@ async function publicarMeli(producto, precio, stock, category_id) {
   };
 
   const post = await request(options);
+  console.log("post en meli es: " + JSON.stringify(post));
   return post;
 }
 

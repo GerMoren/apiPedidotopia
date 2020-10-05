@@ -27,6 +27,8 @@ server.get("/predictor/:id", async (req, res) => {
         error: "No encontramos categorias para esa busqueda",
       });
     } else {
+      console.log("categories es: " + JSON.stringify(predicts));
+
       res.send(predicts);
     }
   } else {
