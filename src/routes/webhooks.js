@@ -200,50 +200,52 @@ server.post("/shopify/create", (req, res, next) => {
   const productCreate = req.body;
   // console.log(productCreate.variants[0].sku);
   var productId;
-  Product.findOrCreate({
-    where: {
-      title: productCreate.title,
-      description: productCreate.body_html,
-      sku: productCreate.variants[0].sku,
-      stock_inicial: productCreate.variants[0].old_inventory_quantity,
-      precio_inicial: productCreate.variants[0].price,
-      images: productCreate.images.map((i) => {
-        // console.log(i);
-        return i.src;
-      }),
-      productId_Shopify: productCreate.id,
-    },
-  })
-    .then((product) => {
-      // console.log(product);
-      productId = product[0].dataValues.id;
-      return Category.findOrCreate({
-        where: {
-          title_sugerido: productCreate.handle,
-        },
-      });
+  setTimeout(() => {
+    Product.findOrCreate({
+      where: {
+        title: productCreate.title,
+        description: productCreate.body_html,
+        sku: productCreate.variants[0].sku,
+        stock_inicial: productCreate.variants[0].old_inventory_quantity,
+        precio_inicial: productCreate.variants[0].price,
+        images: productCreate.images.map((i) => {
+          // console.log(i);
+          return i.src;
+        }),
+        productId_Shopify: productCreate.id,
+      },
     })
-    .then((category) => {
-      // console.log(category);
-      return category[0].setProducts(productId);
-    })
-    .then((v) => {
-      // console.log(v);
-      return Provider.findByPk(2);
-    })
-    .then((provider) => {
-      provider.setProducts(productId, {
-        through: {
-          link: `https://${APP_DOMAIN}/products/${productCreate.title
-            .toLowerCase()
-            .replace(/\s+/g, "-")}`,
-          stock: productCreate.variants[0].inventory_quantity,
-          precio: productCreate.variants[0].price,
-        },
-      });
-      res.send();
-    })
-    .catch((error) => next("Error: " + error));
+      .then((product) => {
+        // console.log(product);
+        productId = product[0].dataValues.id;
+        return Category.findOrCreate({
+          where: {
+            title_sugerido: productCreate.handle,
+          },
+        });
+      })
+      .then((category) => {
+        // console.log(category);
+        return category[0].setProducts(productId);
+      })
+      .then((v) => {
+        // console.log(v);
+        return Provider.findByPk(2);
+      })
+      .then((provider) => {
+        provider.setProducts(productId, {
+          through: {
+            link: `https://${APP_DOMAIN}/products/${productCreate.title
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`,
+            stock: productCreate.variants[0].inventory_quantity,
+            precio: productCreate.variants[0].price,
+          },
+        });
+        res.send();
+      })
+      .catch((error) => next("Error: " + error));
+  }, 60000);
 });
 
 //Ruta que recibe la notificación desde meli cuando se crea/actualiza un producto (YA NO SE USA ESTA!!)
