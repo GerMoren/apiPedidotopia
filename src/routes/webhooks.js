@@ -170,11 +170,13 @@ server.post("/meli", (req, res) => {
       .then((order) => {
         console.log(JSON.stringify(order) + "RESPUESTA MELI!!! ");
         return Orders.findOrCreate({
-          meli_Id: order.id,
-          cantidad: order.order_items[0].quantity,
-          total: order.total_amount,
-          status: "created",
-          user_Id: order.buyer.id,
+          where: {
+            meli_Id: order.id,
+            cantidad: order.order_items[0].quantity,
+            total: order.total_amount,
+            status: "created",
+            user_Id: order.buyer.id,
+          },
         })
           .then((created) => {
             console.log(created);
