@@ -145,56 +145,89 @@ server.post("/", (req, res) => {
 //   res.send(p);
 // });
 
-server.post("/publicar/:id", async (req, res) => {
-  try {
-    const idProd = req.params.id;
-    const { source, precio, stock, category_id } = req.body;
-    let prod = null;
-    let link = null;
-    let providerId = null;
-    console.log("req bodye s: " + JSON.stringify(req.body));
+server.post("/publicar/:id", async (req, res, next) => {
+  const idProd = req.params.id;
+  const { source, precio, stock, category_id } = req.body;
+  var prod;
+  var link;
+  var providerId;
+  var productoAPublicar;
+  // console.log("req bodye s: " + JSON.stringify(req.body));
 
-    // Busco el producto que quiere publicar el usuario
-    const productToPublish = await Product.findOne({
-      where: { id: idProd },
-    });
-
-    if (source === "shopify") {
-      // Le envio el Producto a la funcion
-      prod = await publicarShopify(productToPublish, precio, stock);
-
-      await productToPublish.update({
-        productId_Shopify: prod.product.id,
-      });
-      //  link = prod.title.toLowerCase().replace(/\s+/g, "-");
-      link = `https://${APP_DOMAIN}/products/${prod.product.title
-        .toLowerCase()
-        .replace(/\s+/g, "-")}`;
-      providerId = 2;
-    } else if (source === "mercadolibre") {
-      prod = await publicarMeli(productToPublish, precio, stock, category_id);
-
-      await productToPublish.update({
-        productId_Meli: prod.id,
-      });
-      providerId = 1;
-      link = prod.permalink;
-    }
-
-    await Productprovider.create({
-      stock,
-      precio,
-      link,
-      productId: productToPublish.id,
-      providerId,
-    });
-
+  // Busco el producto que quiere publicar el usuario
+  if (source === "shopify") {
     Product.findOne({
       where: { id: idProd },
-      include: [Provider],
-    }).then((producto) => res.send(producto));
-  } catch (error) {
-    res.status(500).send(error);
+    })
+      .then((productToPublish) => {
+        productoAPublicar = productToPublish;
+        return publicarShopify(productToPublish, precio, stock);
+        //  link = prod.title.toLowerCase().replace(/\s+/g, "-");
+      })
+      .then((prod) => {
+        link = `https://${APP_DOMAIN}/products/${prod.product.title
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`;
+        providerId = 2;
+        return productoAPublicar.update({
+          productId_Shopify: prod.product.id,
+        });
+      })
+      .then((p) => {
+        return Provider.findByPk(providerId);
+      })
+      .then((provider) => {
+        return provider.addProducts(idProd, {
+          through: {
+            stock,
+            precio,
+            link,
+          },
+        });
+      })
+      .then((productos) => {
+        return Product.findOne({
+          where: { id: idProd },
+          include: [Provider],
+        });
+      })
+      .then((producto) => res.send(producto))
+      .catch((err) => next(err));
+  } else if (source === "mercadolibre") {
+    Product.findOne({
+      where: { id: idProd },
+    })
+      .then((productToPublish) => {
+        productoAPublicar = productToPublish;
+        return publicarMeli(productToPublish, precio, stock, category_id);
+      })
+      .then((prod) => {
+        providerId = 1;
+        link = prod.permalink;
+        return productoAPublicar.update({
+          productId_Meli: prod.id,
+        });
+      })
+      .then((p) => {
+        return Provider.findByPk(providerId);
+      })
+      .then((provider) => {
+        return provider.addProducts(idProd, {
+          through: {
+            stock,
+            precio,
+            link,
+          },
+        });
+      })
+      .then((productos) => {
+        return Product.findOne({
+          where: { id: idProd },
+          include: [Provider],
+        });
+      })
+      .then((producto) => res.send(producto))
+      .catch((err) => next(err));
   }
 });
 
@@ -227,7 +260,7 @@ async function publicarShopify(producto, precio, stock) {
   };
 
   const post = await request(options);
-  console.log("post es: " + JSON.stringify(post));
+  // console.log("post es: " + JSON.stringify(post));
   return post;
 }
 

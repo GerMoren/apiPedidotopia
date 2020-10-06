@@ -53,7 +53,7 @@ const meliRefreshToken = mercadolibre.refreshAccessToken((err, res) => {
 });
 
 //Ruta que recibe la notificación desde shopify cuando se crea una nueva orden
-server.post("/shopify", (req, res) => {
+server.post("/shopify", (req, res, next) => {
   const rta = req.body;
   // console.log(JSON.stringify(rta));
   res.send();
@@ -85,17 +85,23 @@ server.post("/shopify", (req, res) => {
 });
 
 //Ruta que recibe la notificación desde meli cuando se crea una nueva orden/nuevo producto/modificar producto (ESTA ES LA QUE VA!)
-server.post("/meli", (req, res) => {
+server.post("/meli", (req, res, next) => {
   const rta = req.body;
   // console.log(rta)
   const topic = req.body.topic;
   if (topic === "items") {
     const rta = req.body;
-    console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
+    // console.log("Llegó la respuesta de MELI: " + JSON.stringify(rta));
     var id = req.body.resource.split("/");
     var productId = id[id.length - 1];
     var category_id;
-    console.log(productId + " ACAAAAA");
+    var title;
+    var productId_Meli;
+    var images;
+    var stock;
+    var precio;
+    var link;
+    // console.log(productId + " ACAAAAA");
 
     fetch(
       `https://api.mercadolibre.com/items/${productId}?access_token=${access_token}`,
@@ -105,49 +111,65 @@ server.post("/meli", (req, res) => {
     )
       .then((response) => response.json())
       .then((product) => {
+        console.log(product);
         category_id = product.category_id;
-        //  console.log(JSON.stringify(product) + " RESPUESTA MELI!!! ");
-        Product.findOrCreate({
+        title = product.title;
+        productId_Meli = product.id;
+        images =
+          product.pictures &&
+          product.pictures.map((i) => {
+            return i.secure_url;
+          });
+        stock = product.initial_quantity;
+        precio = product.price;
+        link = product.permalink;
+        return Product.findOne({ where: { productId_Meli: product.id } });
+      })
+      .then((values) => {
+        console.log(values);
+        if (!values) {
+          return Product.create({
+            title,
+            productId_Meli,
+            images,
+          });
+        } else {
+          res.status(500).send({
+            message: `ya existe el producto con Id de Meli: ${productId_Meli} en la BD`,
+          });
+        }
+      })
+      .then((product) => {
+        console.log(product);
+        productId = product.dataValues.id;
+        return Category.findOrCreate({
           where: {
-            title: product.title,
-            productId_Meli: product.id,
-            images: product.pictures.map((i) => {
-              return i.secure_url;
-            }),
+            title_sugerido: category_id,
           },
-        })
-          .then((product) => {
-            //  console.log(product);
-            productId = product[0].dataValues.id;
-            return Category.findOrCreate({
-              where: {
-                title_sugerido: category_id,
-              },
-            });
-          })
-          .then((category) => {
-            //  console.log(category);
-            return category[0].setProducts(productId);
-          })
-          .then((v) => {
-            //  console.log(v);
-            return Provider.findByPk(1);
-          })
-          .then((provider) => {
-            //  console.log(provider)
-            return provider.addProducts(productId, {
-              through: {
-                stock: product.initial_quantity,
-                precio: product.price,
-                link: product.permalink,
-              },
-            });
-          })
-          .then(() => {
-            res.sendStatus(200);
-          })
-          .catch((error) => next("Error: " + error));
-      });
+        });
+      })
+      .then((category) => {
+        console.log(category);
+        return category[0].addProducts(productId);
+      })
+      .then((v) => {
+        console.log(v);
+        return Provider.findByPk(1);
+      })
+      .then((provider) => {
+        //  console.log(provider)
+        return provider.addProducts(productId, {
+          through: {
+            stock,
+            precio,
+            link,
+          },
+        });
+      })
+      .then((value) => {
+        res.send(value);
+      })
+      .catch((error) => next("Error: " + error));
   } else if (topic === "created_orders") {
     var order2;
     var itemID;
@@ -198,54 +220,60 @@ server.post("/meli", (req, res) => {
 //Ruta que recibe la notificación desde shopify cuando se crea/actualiza un producto
 server.post("/shopify/create", (req, res, next) => {
   const productCreate = req.body;
+  console.log(productCreate);
   // console.log(productCreate.variants[0].sku);
   var productId;
-  setTimeout(() => {
-    Product.findOrCreate({
-      where: {
-        title: productCreate.title,
-        description: productCreate.body_html,
-        sku: productCreate.variants[0].sku,
-        stock_inicial: productCreate.variants[0].old_inventory_quantity,
-        precio_inicial: productCreate.variants[0].price,
-        images: productCreate.images.map((i) => {
-          // console.log(i);
-          return i.src;
-        }),
-        productId_Shopify: productCreate.id,
-      },
+  Product.findOne({ where: { productId_Shopify: productCreate.id } })
+    .then((value) => {
+      // console.log("vallues: ", value);
+      if (!value) {
+        return Product.create({
+          title: productCreate.title,
+          description: productCreate.body_html,
+          sku: productCreate.variants[0].sku,
+          stock_inicial: productCreate.variants[0].old_inventory_quantity,
+          precio_inicial: productCreate.variants[0].price,
+          images: productCreate.images.map((i) => {
+            return i.src;
+          }),
+          productId_Shopify: productCreate.id,
+        });
+      } else {
+        res.status(500).send({
+          message: `ya existe el producto con Id de shopify: ${productCreate.id} en la BD`,
+        });
+      }
     })
-      .then((product) => {
-        // console.log(product);
-        productId = product[0].dataValues.id;
-        return Category.findOrCreate({
-          where: {
-            title_sugerido: productCreate.handle,
-          },
-        });
-      })
-      .then((category) => {
-        // console.log(category);
-        return category[0].setProducts(productId);
-      })
-      .then((v) => {
-        // console.log(v);
-        return Provider.findByPk(2);
-      })
-      .then((provider) => {
-        provider.setProducts(productId, {
-          through: {
-            link: `https://${APP_DOMAIN}/products/${productCreate.title
-              .toLowerCase()
-              .replace(/\s+/g, "-")}`,
-            stock: productCreate.variants[0].inventory_quantity,
-            precio: productCreate.variants[0].price,
-          },
-        });
-        res.send();
-      })
-      .catch((error) => next("Error: " + error));
-  }, 60000);
+    .then((product) => {
+      console.log(product);
+      productId = product.dataValues.id;
+      return Category.findOrCreate({
+        where: {
+          title_sugerido: productCreate.handle,
+        },
+      });
+    })
+    .then((category) => {
+      // console.log(category);
+      return category[0].setProducts(productId);
+    })
+    .then((v) => {
+      // console.log(v);
+      return Provider.findByPk(2);
+    })
+    .then((provider) => {
+      provider.addProducts(productId, {
+        through: {
+          link: `https://${APP_DOMAIN}/products/${productCreate.title
+            .toLowerCase()
+            .replace(/\s+/g, "-")}`,
+          stock: productCreate.variants[0].inventory_quantity,
+          precio: productCreate.variants[0].price,
+        },
+      });
+      res.send();
+    })
+    .catch((error) => next("Error: " + error));
 });
 
 //Ruta que recibe la notificación desde meli cuando se crea/actualiza un producto (YA NO SE USA ESTA!!)
